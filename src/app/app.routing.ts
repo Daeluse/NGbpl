@@ -5,6 +5,8 @@ import {
     PreloadAllModules
 } from '@angular/router';
 
+let isElectron = process.env.ENV === 'electron' || process.env.ENV === 'watch:electron';
+
 const ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: '/home' },
   { path: 'home', loadChildren: './home/home.module#HomeModule' },
@@ -13,7 +15,7 @@ const ROUTES: Routes = [
 ];
 
 @NgModule({
-  imports: [ RouterModule.forRoot(ROUTES, { preloadingStrategy: PreloadAllModules }) ],
+  imports: [ RouterModule.forRoot(ROUTES, { useHash: isElectron, preloadingStrategy: PreloadAllModules }) ],
   exports: [ RouterModule ]
 })
 export class AppRoutingModule {

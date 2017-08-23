@@ -2,8 +2,11 @@ import { enableProdMode } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 import { AppModule } from './app/app.module';
 
+let isProd = process.env.ENV === 'build';
+let isElectron = process.env.ENV === 'electron' || process.env.ENV === 'watch:electron';
+
 // depending on the env mode, enable prod mode or add debugging modules
-if (process.env.ENV === 'build') {
+if (isProd || isElectron) {
   enableProdMode();
 }
 

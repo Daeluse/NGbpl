@@ -8,15 +8,22 @@ var autoprefixer = require('autoprefixer');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var CopyWebpackPlugin = require('copy-webpack-plugin');
+var WebpackOnBuildPlugin = require('on-build-webpack');
+var electron = require('electron-connect').server.create({
+  path: './dist'
+});
 
 /**
  * Env
  * Get npm lifecycle event to identify the environment
  */
 var ENV = process.env.npm_lifecycle_event;
-var isTestWatch = ENV === 'test-watch';
+var isTestWatch = ENV === 'watch:test';
 var isTest = ENV === 'test' || isTestWatch;
-var isProd = ENV === 'build';
+var isProdWatch = ENV === 'watch';
+var isProd = ENV === 'build' || isProdWatch;
+var isElectronWatch = ENV === 'watch:electron';
+var isElectron = ENV === 'electron' || isElectronWatch;
 
 module.exports = function makeWebpackConfig() {
   /**
@@ -59,9 +66,9 @@ module.exports = function makeWebpackConfig() {
    */
   config.output = isTest ? {} : {
     path: root('dist'),
-    publicPath: isProd ? './' : 'http://localhost:3000/',
-    filename: isProd ? 'js/[name].[hash].js' : 'js/[name].js',
-    chunkFilename: isProd ? '[id].[hash].chunk.js' : '[id].chunk.js'
+    publicPath: isProd || isElectron ? './' : 'http://localhost:3000/',
+    filename: isProd || isElectron ? 'js/[name].[hash].js' : 'js/[name].js',
+    chunkFilename: isProd || isElectron ? '[id].[hash].chunk.js' : '[id].chunk.js'
   };
 
   /**
@@ -101,7 +108,7 @@ module.exports = function makeWebpackConfig() {
       },
 
       // Support for *.json files.
-      {test: /\.json$/, loader: 'json-loader'},
+      { test: /\.json$/, loader: 'json-loader' },
 
       // Support for CSS as raw text
       // use 'null' loader in test mode (https://github.com/webpack/null-loader)
@@ -109,10 +116,10 @@ module.exports = function makeWebpackConfig() {
       {
         test: /\.css$/,
         exclude: root('src', 'app'),
-        loader: isTest ? 'null-loader' : ExtractTextPlugin.extract({ fallback: 'style-loader', use: ['css-loader', 'postcss-loader']})
+        loader: isTest ? 'null-loader' : ExtractTextPlugin.extract({ fallback: 'style-loader', use: ['css-loader', 'postcss-loader'] })
       },
       // all css required in src/app files will be merged in js files
-      {test: /\.css$/, include: root('src', 'app'), loader: 'raw-loader!postcss-loader'},
+      { test: /\.css$/, include: root('src', 'app'), loader: 'raw-loader!postcss-loader' },
 
       // support for .scss files
       // use 'null' loader in test mode (https://github.com/webpack/null-loader)
@@ -120,14 +127,14 @@ module.exports = function makeWebpackConfig() {
       {
         test: /\.(scss|sass)$/,
         exclude: root('src', 'app'),
-        loader: isTest ? 'null-loader' : ExtractTextPlugin.extract({ fallback: 'style-loader', use: ['css-loader', 'postcss-loader', 'sass-loader']})
+        loader: isTest ? 'null-loader' : ExtractTextPlugin.extract({ fallback: 'style-loader', use: ['css-loader', 'postcss-loader', 'sass-loader'] })
       },
       // all css required in src/app files will be merged in js files
-      {test: /\.(scss|sass)$/, exclude: root('src', 'style'), loader: 'raw-loader!postcss-loader!sass-loader'},
+      { test: /\.(scss|sass)$/, exclude: root('src', 'style'), loader: 'raw-loader!postcss-loader!sass-loader' },
 
       // support for .html as raw text
       // todo: change the loader to something that adds a hash to images
-      {test: /\.html$/, loader: 'raw-loader',  exclude: root('src', 'public')}
+      { test: /\.html$/, loader: 'raw-loader', exclude: root('src', 'public') }
     ]
   };
 
@@ -225,7 +232,7 @@ module.exports = function makeWebpackConfig() {
       // Extract css files
       // Reference: https://github.com/webpack/extract-text-webpack-plugin
       // Disabled when in test mode or not in build mode
-      new ExtractTextPlugin({filename: 'css/[name].[hash].css', disable: !isProd})
+      new ExtractTextPlugin({ filename: 'css/[name].[hash].css', disable: !isProd || !isElectron })
     );
   }
 
@@ -242,7 +249,29 @@ module.exports = function makeWebpackConfig() {
 
       // Reference: http://webpack.github.io/docs/list-of-plugins.html#uglifyjsplugin
       // Minify all javascript, switch loaders to minimizing mode
-      new webpack.optimize.UglifyJsPlugin({sourceMap: true, mangle: { keep_fnames: true }}),
+      new webpack.optimize.UglifyJsPlugin({ sourceMap: true, mangle: { keep_fnames: true } }),
+
+      // Copy assets from the public folder
+      // Reference: https://github.com/kevlened/copy-webpack-plugin
+      new CopyWebpackPlugin([{
+        from: root('src/public')
+      }])
+    );
+  }
+
+  if (isElectron) {
+    config.plugins.push(
+      // Reference: http://webpack.github.io/docs/list-of-plugins.html#noerrorsplugin
+      // Only emit files when there are no errors
+      new webpack.NoEmitOnErrorsPlugin(),
+
+      // // Reference: http://webpack.github.io/docs/list-of-plugins.html#dedupeplugin
+      // // Dedupe modules in the output
+      // new webpack.optimize.DedupePlugin(),
+
+      // Reference: http://webpack.github.io/docs/list-of-plugins.html#uglifyjsplugin
+      // Minify all javascript, switch loaders to minimizing mode
+      new webpack.optimize.UglifyJsPlugin({ sourceMap: true, mangle: { keep_fnames: true } }),
 
       // Copy assets from the public folder
       // Reference: https://github.com/kevlened/copy-webpack-plugin
@@ -255,6 +284,19 @@ module.exports = function makeWebpackConfig() {
      * Target Electron
      */
     config.target = 'electron-renderer';
+  }
+
+  if (isElectron && isElectronWatch) {
+    config.plugins.push(
+      new WebpackOnBuildPlugin(function (stats) {
+        if (!config.reload) {
+          config.reload = true
+          electron.start()
+        } else {
+          electron.reload()
+        }
+      })
+    );
   }
 
   /**
