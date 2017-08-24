@@ -1,5 +1,4 @@
 const electron = require('electron')
-const livereload = require('electron-connect').client
 // Module to control application life.
 const app = electron.app
 // Module to create native browser window.
@@ -19,6 +18,7 @@ function createWindow () {
   mainWindow.loadURL(`file://${__dirname}/index.html`)
 
   if (ENV === 'watch:electron') {
+    const livereload = require('electron-connect').client
     // Create Live Reload
     livereload.create(mainWindow)
     // Open the DevTools.

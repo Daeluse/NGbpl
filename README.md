@@ -6,16 +6,12 @@
 # Install Dependencies
 npm install
 
-# Run Webpack Dev Server
+# Watch Electron App
 npm start
 
-# Build App With Webpack (Watch is Optional)
-npm run build
-npm run watch
-
-# Build App With Electron (Watch is Optional)
+# Packaging Your Electron App
 npm run electron
-npm run watch:electron
+npm run package
 
 
 ```

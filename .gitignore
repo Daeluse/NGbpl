@@ -37,6 +37,7 @@ Thumbs.db
 
 # Dist #
 /dist
+/dist-app
 /public/__build__/
 /src/*/__build__/
 __build__/**
